@@ -44,6 +44,22 @@ if (isset($_SESSION['run']) && ($_SESSION['run'] == '0')) {
 	exit;
 }
 
+/* ================= input validation and session storage ================= */
+$filters = array(
+	'action' => array(
+		'filter' => FILTER_CALLBACK,
+		'default' => '',
+		'options' => array('options' => 'sanitize_search_string')
+		),
+	'id' => array(
+		'filter' => FILTER_VALIDATE_INT,
+		'default' => '1'
+		),
+);
+
+validate_store_request_vars($filters, 'sess_reportit_run');
+/* ================= Input validation ================= */
+
 switch (get_request_var('action')) {
 	case 'calculation':
 		#top_header();

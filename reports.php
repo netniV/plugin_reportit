@@ -34,6 +34,97 @@ include_once(REPORTIT_BASE_PATH . '/lib/funct_html.php');
 
 set_default_action();
 
+/* ================= input validation and session storage ================= */
+
+/* The following is a full list of request vars used in this file called by
+   get_request_var(), it does not cover request vars called via other methods
+   which include but are not limited to get_nfilter_request_var():
+
+	action, data_source_filter, drp_action, filter, host_template_id, id,
+	owner, page, preset_timespan, rec, report_addition, report_autoarchive,
+	report_autoexport, report_autoexport_max_records, report_description,
+	report_email_address, report_email_body, report_email_format,
+	report_email_recipient, report_email_subject, report_end_date,
+	report_owner, report_schedule_frequency, report_start_date,
+	report_timespan, rows, rrdlist_shifttime_end, rrdlist_shifttime_start,
+	rrdlist_subhead, rrdlist_timezone, rrdlist_weekday_end,
+	rrdlist_weekday_start, selected_items, sort_column, tab, template,
+	template_id
+
+   Some of these are now pre-filtered using standard Cacti methods.  Others
+   are using the reportit specific input_validate_xxx functions to validate
+   the values and can be requested unfiltered into those functions as long
+   as they are properly validated and use get_nfilter_request_var() after
+   to make sure no erroneous reports are made about the attempt to read the
+   variables.
+*/
+
+$filters = array(
+	'rows' => array(
+		'filter' => FILTER_VALIDATE_INT,
+		'pageset' => true,
+		'default' => '-1'
+		),
+	'page' => array(
+		'filter' => FILTER_VALIDATE_INT,
+		'default' => '1'
+		),
+	'host_template_id' => array(
+		'filter' => FILTER_VALIDATE_INT,
+		'default' => ''
+		),
+	'id' => array(
+		'filter' => FILTER_VALIDATE_INT,
+		'default' => ''
+		),
+	'filter' => array(
+		'filter' => FILTER_CALLBACK,
+		'pageset' => true,
+		'default' => '',
+		'options' => array('options' => 'sanitize_search_string')
+		),
+	'data_source_filter' => array(
+		'filter' => FILTER_CALLBACK,
+		'default' => '',
+		'options' => array('options' => 'sanitize_search_string')
+		),
+	'rrdlist_subhead' => array(
+		'filter' => FILTER_CALLBACK,
+		'default' => '',
+		'options' => array('options' => 'sanitize_search_string')
+		),
+	'report_description' => array(
+		'filter' => FILTER_CALLBACK,
+		'default' => '',
+		'options' => array('options' => 'sanitize_search_string')
+		),
+	'report_email_subject' => array(
+		'filter' => FILTER_CALLBACK,
+		'default' => '',
+		'options' => array('options' => 'sanitize_search_string')
+		),
+	'report_email_body' => array(
+		'filter' => FILTER_CALLBACK,
+		'default' => '',
+		'options' => array('options' => 'sanitize_search_string')
+		),
+	'report_email_address' => array(
+		'filter' => FILTER_VALIDATE_EMAIL,
+		'default' => ''
+		),
+	'owner' => array(
+		'filter' => FILTER_VALIDATE_INT,
+		'default' => '-1'
+		),
+	'template' => array(
+		'filter' => FILTER_VALIDATE_INT,
+		'default' => '-1'
+		),
+);
+
+validate_store_request_vars($filters, 'sess_reports');
+/* ================= Input validation ================= */
+
 switch (get_request_var('action')) {
 	case 'actions':
 		form_actions();
@@ -504,11 +595,11 @@ function form_save() {
 	switch(get_request_var('tab')) {
 	case 'presets':
 	 	input_validate_input_blacklist(get_request_var('id'),array(0));
-		input_validate_input_key(get_request_var('rrdlist_timezone'), $timezone, true);
-		input_validate_input_key(get_request_var('rrdlist_shifttime_start'), $shifttime);
-		input_validate_input_key(get_request_var('rrdlist_shifttime_end'), $shifttime2);
-		input_validate_input_key(get_request_var('rrdlist_weekday_start'), $weekday);
-		input_validate_input_key(get_request_var('rrdlist_weekday_end'), $weekday);
+		input_validate_input_key(get_nfilter_request_var('rrdlist_timezone'), $timezone, true);
+		input_validate_input_key(get_nfilter_request_var('rrdlist_shifttime_start'), $shifttime);
+		input_validate_input_key(get_nfilter_request_var('rrdlist_shifttime_end'), $shifttime2);
+		input_validate_input_key(get_nfilter_request_var('rrdlist_weekday_start'), $weekday);
+		input_validate_input_key(get_nfilter_request_var('rrdlist_weekday_end'), $weekday);
 
 		form_input_validate(get_request_var('rrdlist_subhead'), 'rrdlist_subhead', '' ,true,3);
 
@@ -521,12 +612,12 @@ function form_save() {
 		input_validate_input_key(get_request_var('report_owner'), $owner);
 
 		if (read_config_option('reportit_operator')) {
-			input_validate_input_key(get_request_var('report_schedule_frequency'), $frequency, true);
-			input_validate_input_limits(get_request_var('report_autoarchive'),0,1000);
+			input_validate_input_key(get_nfilter_request_var('report_schedule_frequency'), $frequency, true);
+			input_validate_input_limits(get_nfilter_request_var('report_autoarchive'),0,1000);
 
 			if (read_config_option('reportit_auto_export')) {
-				input_validate_input_limits(get_request_var('report_autoexport_max_records'),0,1000);
-				input_validate_input_key(get_request_var('report_autoexport'), $format, true);
+				input_validate_input_limits(get_nfilter_request_var('report_autoexport_max_records'),0,1000);
+				input_validate_input_key(get_nfilter_request_var('report_autoexport'), $format, true);
 			}
 		}
 
@@ -549,21 +640,21 @@ function form_save() {
 		/* if template is locked we don't know if the variables have been changed */
 		locked(get_request_var('template_id'));
 
-		form_input_validate(get_request_var('report_description'), 'report_description', '' ,false,3);
+		form_input_validate(get_nfilter_request_var('report_description'), 'report_description', '' ,false,3);
 
 		/* validate start- and end date if sliding time should not be used */
 		if (!isset_request_var('report_dynamic')) {
-			if (!preg_match('/^\d{4}\-\d{2}\-\d{2}$/', get_request_var('report_start_date'))) {
+			if (!preg_match('/^\d{4}\-\d{2}\-\d{2}$/', get_nfilter_request_var('report_start_date'))) {
 				session_custom_error_message('report_start_date', 'Invalid date');
 			}
 
-			if (!preg_match('/^\d{4}\-\d{2}\-\d{2}$/', get_request_var('report_end_date'))) {
+			if (!preg_match('/^\d{4}\-\d{2}\-\d{2}$/', get_nftiler_request_var('report_end_date'))) {
 				session_custom_error_message('report_end_date', 'Invalid date');
 			}
 
 			if (!is_error_message()) {
-				list($ys, $ms, $ds) = explode('-', get_request_var('report_start_date'));
-				list($ye, $me, $de) = explode('-', get_request_var('report_end_date'));
+				list($ys, $ms, $ds) = explode('-', get_nfilter_request_var('report_start_date'));
+				list($ye, $me, $de) = explode('-', get_nfilter_request_var('report_end_date'));
 
 				if (!checkdate($ms, $ds, $ys)) session_custom_error_message('report_start_date', 'Invalid date');
 				if (!checkdate($me, $de, $ye)) session_custom_error_message('report_end_date', 'Invalid date');
@@ -578,13 +669,13 @@ function form_save() {
 		}
 
 		if (!read_config_option('reportit_operator')) {
-			input_validate_input_key(get_request_var('report_schedule_frequency'), $frequency, true);
-		    input_validate_input_limits(get_request_var('report_autoarchive'),0,1000);
+			input_validate_input_key(get_nfilter_request_var('report_schedule_frequency'), $frequency, true);
+			input_validate_input_limits(get_nfilter_request_var('report_autoarchive'),0,1000);
 
-		    if (read_config_option('reportit_auto_export')) {
-				input_validate_input_limits(get_request_var('report_autoexport_max_records'),0,1000);
-				input_validate_input_key(get_request_var('report_autoexport'), $format, true);
-		    }
+			if (read_config_option('reportit_auto_export')) {
+				input_validate_input_limits(get_nfilter_request_var('report_autoexport_max_records'),0,1000);
+				input_validate_input_key(get_nfilter_request_var('report_autoexport'), $format, true);
+			}
 		}
 	}
 	/* ==================================================== */
